@@ -3,7 +3,9 @@ import jwt from "jsonwebtoken";
 
 const authenticateToke = async (req, res, next) => {
     const prisma = new PrismaClient();
-    const token = req.cookies.token;
+    const authToken = req.header("Authorization");
+    const token = authToken.split(" ")[1];
+
     const JWT_KEY = process.env.SECRET_KEY; //need to check
     // console.log(token);
 

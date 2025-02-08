@@ -40,16 +40,20 @@ export const Login = async (req, res) => {
         //Generate Token
         const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "5m" });
         // console.log(token);
+        // res.cookie("token", token, { httpOnly: true });
 
-        res.cookie("token", token, { httpOnly: true });
-        res.status(200).json({ messgae: "Login Successful!!" });
+        //Storing the token in response header
+
+        res.status(200).header("Authorization", `Bearer ${token}`).json({ token, messgae: "Login Successful!!" });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 }
 
 export const Logout = (req, res) => {
-    res.clearCookie("token");
+    res.clearCookie("token", {
+        httpOnly: true
+    });
     res.json({ message: "Logout successful!!!" });
 }
 
