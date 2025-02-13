@@ -3,7 +3,14 @@ import jwt from "jsonwebtoken";
 
 const prisma = new PrismaClient();
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+
+const generateToken = (user) => {
+    const accessToken = jwt.sign({ id: user.id, email: user.email }, JWT_ACCESS_SECRET, { expiresIn: "1m" });
+    const refreshToken = jwt.sign({ id: user.id }, JWT_REFRESH_SECRET, { expiresIn: "7d" });
+    return { accessToken, refreshToken };
+}
 
 export const Register = async (req, res) => {
     try {
@@ -38,13 +45,23 @@ export const Login = async (req, res) => {
         }
 
         //Generate Token
-        const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "5m" });
+        // const token = jwt.sign({ id: user.id }, JWT_ACCESS_SECRET, { expiresIn: "5m" });
         // console.log(token);
         // res.cookie("token", token, { httpOnly: true });
 
         //Storing the token in response header
+        //res.status(200).header("Authorization", `Bearer ${token}`).json({ token, messgae: "Login Successful!!" });
 
-        res.status(200).header("Authorization", `Bearer ${token}`).json({ token, messgae: "Login Successful!!" });
+
+        //Generate both the tokens
+        const tokens = generateToken(user);
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { refreshToken: tokens.refreshToken }
+        });
+        // console.log(tokens);
+        res.json(tokens);
+
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -59,4 +76,24 @@ export const Logout = (req, res) => {
 
 export const dashboard = (req, res) => {
     res.json({ message: "(backend)Authenticatd", user: req.user });
+}
+
+
+//Refresh Token Controller
+export const Refresh = async (req, res) => {
+    const { refreshToken } = req.body;
+    if (!refreshToken) return res.status(401).json({ error: "Unauthorized!!(Refreshtoken not found)" });
+
+    const user = await prisma.user.findFirst({ where: { refreshToken } });
+    if (!user) return res.status(403).json({ error: "Invalid Refresh Token" });
+
+    jwt.verify(refreshToken, JWT_REFRESH_SECRET, (err, decoded) => {
+        if (err) return res.status(403).json({ error: "Invalid Refresh Token" });
+
+
+        const tokens = generateToken(user);
+        prisma.user.update({ where: { id: user.id }, data: { refreshToken: tokens.refreshToken } });
+        console.log("new tokens:", tokens);
+        res.json(tokens);
+    });
 }
