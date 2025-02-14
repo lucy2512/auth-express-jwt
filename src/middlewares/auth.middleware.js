@@ -6,8 +6,7 @@ const authenticateToke = async (req, res, next) => {
     const authToken = req.header("Authorization");
     const token = authToken.split(" ")[1];
 
-    const JWT_KEY = process.env.SECRET_KEY; //need to check
-    // console.log(token);
+    const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET;
 
     if (!token) return res.status(401).json({ messgae: "Unauthorized" });
 
@@ -23,7 +22,7 @@ const authenticateToke = async (req, res, next) => {
         req.user = user;
         next();
     } catch (error) {
-        return res.status(403).json({ message: "Invalid token" });
+        return res.status(401).json({ message: "Invalid token" });
     }
 };
 

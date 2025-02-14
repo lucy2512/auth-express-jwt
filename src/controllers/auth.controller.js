@@ -84,16 +84,31 @@ export const Refresh = async (req, res) => {
     const { refreshToken } = req.body;
     if (!refreshToken) return res.status(401).json({ error: "Unauthorized!!(Refreshtoken not found)" });
 
-    const user = await prisma.user.findFirst({ where: { refreshToken } });
-    if (!user) return res.status(403).json({ error: "Invalid Refresh Token" });
+    // const user = await prisma.user.findFirst({ where: { refreshToken } });
+    // if (!user) return res.status(403).json({ error: "Invalid Refresh Token 1" });
 
-    jwt.verify(refreshToken, JWT_REFRESH_SECRET, (err, decoded) => {
-        if (err) return res.status(403).json({ error: "Invalid Refresh Token" });
+    const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET)
 
+    if (!decoded?.id) return res.status(403).json({ error: "Invalid Refresh Token" })
 
-        const tokens = generateToken(user);
-        prisma.user.update({ where: { id: user.id }, data: { refreshToken: tokens.refreshToken } });
-        console.log("new tokens:", tokens);
-        res.json(tokens);
+    const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { id: true, email: true }
     });
+
+    const tokens = generateToken(user);
+
+    await prisma.user.update({ where: { id: user.id }, data: { refreshToken: tokens.refreshToken } });
+
+    // jwt.verify(refreshToken, JWT_REFRESH_SECRET, (err, decoded) => {
+    //     if (err) return res.status(403).json({ error: "Invalid Refresh Token" });
+
+
+    //     const tokens = generateToken(user);
+    //     prisma.user.update({ where: { id: user.id }, data: { refreshToken: tokens.refreshToken } });
+    //     console.log("new tokens:", tokens);
+    //     res.json(tokens);
+    // });
+
+    res.json(tokens);
 }
